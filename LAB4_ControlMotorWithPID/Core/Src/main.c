@@ -116,9 +116,9 @@ int main(void)
 
     HAL_TIM_Encoder_Start(&htim2,TIM_CHANNEL_1|TIM_CHANNEL_2);
 
-    PID.Kp = 10;
-    PID.Ki = 0.001;
-    PID.Kd = 5;
+    PID.Kp = 40;
+    PID.Ki = 0;
+    PID.Kd = 6;
     arm_pid_init_f32(&PID, 0); // PID updated in this function
 
   /* USER CODE END 2 */
@@ -157,9 +157,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 100;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -175,7 +175,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -202,7 +202,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 83;
+  htim1.Init.Prescaler = 99;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 999;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -391,18 +391,23 @@ void ControlPID()
 
 			  QEIReadRaw = __HAL_TIM_GET_COUNTER(&htim2); // Read value TIM2 is pulse
 			  ChangePositionInDegrees();
-
 			  Vfeedback = arm_pid_f32(&PID, setposition - motorangle);
 
-		  }
+			  if(Vfeedback >= 1000){
+				  Vfeedback = 1000;
+			  }
+			  else if(Vfeedback <= -1000){
+				  Vfeedback = -1000;
+			  }
+			  if(Vfeedback >= 0){
+				  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,Vfeedback);
+				  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
+			  }
+			  else{
+				  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,(Vfeedback*(-1)));
+				  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+			  }
 
-		  if(Vfeedback >= 0){
-			  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,Vfeedback);
-			  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,0);
-		  }
-		  else{
-			  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_2,(Vfeedback*(-1)));
-			  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
 		  }
 }
 /* USER CODE END 4 */
